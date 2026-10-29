@@ -9,12 +9,12 @@ import { getFirestore, collection, addDoc, getDocs, query, where, orderBy, serve
   4. Create a Firestore database and publish firestore.rules.
 */
 const firebaseConfig = {
-  apiKey: "PASTE_YOUR_FIREBASE_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.firebasestorage.app",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_FIREBASE_APP_ID"
+  apiKey: "AIzaSyAn-2PdddXj-5T5-2swp7nFDbyOUkxeVMY",
+  authDomain: "bloodsupport-f19fe.firebaseapp.com",
+  projectId: "bloodsupport-f19fe",
+  storageBucket: "bloodsupport-f19fe.firebasestorage.app",
+  messagingSenderId: "421685314363",
+  appId: "1:421685314363:web:7b928b64aa54b26296ed1e"
 };
 
 const configReady = !Object.values(firebaseConfig).some(v => String(v).includes("PASTE_") || String(v).includes("YOUR_"));
