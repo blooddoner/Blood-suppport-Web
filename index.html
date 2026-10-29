@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#b91c1c">
+  <title>Blood Support | Find donors. Save lives.</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#"><span class="brand-icon">♥</span> Blood<span>Support</span></a>
+    <nav><a href="#find">Find Donors</a><a href="#requests">Blood Requests</a><a href="#register">Become a Donor</a></nav>
+    <div class="auth-actions"><span id="user-label"></span><button id="login-btn" class="btn btn-light">Sign in</button><button id="logout-btn" class="btn btn-outline hidden">Sign out</button></div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <div class="eyebrow">COMMUNITY • CARE • HOPE</div>
+        <h1>One donation can<br><span>save up to three lives.</span></h1>
+        <p>Connect with voluntary blood donors in your city and help patients find support when it matters most.</p>
+        <div class="hero-actions"><a class="btn btn-primary" href="#find">Find a donor <span>→</span></a><a class="text-link" href="#register">Register as donor</a></div>
+        <div class="trust"><span>✓ City-wise search</span><span>✓ Blood group filters</span><span>✓ Community powered</span></div>
+      </div>
+      <div class="hero-art"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="blood-drop">♥</div><div class="floating-card"><span class="pulse">●</span><div><b>Every donor matters</b><small>Be someone's hope today</small></div></div><div class="mini-card"><b>8</b><small>Blood groups</small></div></div>
+    </section>
+
+    <section class="stats">
+      <div><strong>8</strong><span>Blood groups</span></div><div><strong>1</strong><span>Community</span></div><div><strong>∞</strong><span>Reasons to help</span></div>
+    </section>
+
+    <section class="section" id="find">
+      <div class="section-heading"><div><div class="eyebrow">DONOR DIRECTORY</div><h2>Find a donor near you</h2><p>Filter by blood group and city to find matching registered donors.</p></div><span class="section-icon">⌕</span></div>
+      <div class="filter-panel">
+        <label>Blood group<select id="search-group"><option value="">All blood groups</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></label>
+        <label>City<input id="search-city" placeholder="e.g. Thane, Mumbai"></label>
+        <label class="search-name">Name (optional)<input id="search-name" placeholder="Search donor name"></label>
+        <button id="search-btn" class="btn btn-primary">Search donors</button>
+        <button id="clear-search" class="btn btn-light">Clear</button>
+      </div>
+      <div class="results-meta"><span id="donor-count">Loading donors…</span><span class="privacy-note">Contact details are shown only to signed-in users.</span></div>
+      <div id="donor-results" class="card-grid"><div class="empty-state">Connecting to donor directory…</div></div>
+    </section>
+
+    <section class="section split-section" id="register">
+      <div class="section-heading"><div><div class="eyebrow">MAKE A DIFFERENCE</div><h2>Become a donor</h2><p>Register your details so nearby people can find your support.</p></div></div>
+      <form id="donor-form" class="form-card">
+        <div class="form-grid">
+          <label>Full name<input name="name" required maxlength="80" placeholder="Your full name"></label>
+          <label>Blood group<select name="bloodGroup" required><option value="">Choose group</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></label>
+          <label>City<input name="city" required maxlength="80" placeholder="Your city"></label>
+          <label>Phone number<input name="phone" required type="tel" pattern="[0-9+() -]{7,20}" placeholder="Contact number"></label>
+          <label class="full-width">Availability<select name="available" required><option value="true">Available to donate</option><option value="false">Currently unavailable</option></select></label>
+        </div>
+        <p class="form-note">Only register if you are comfortable sharing your contact details with signed-in users. Donor eligibility must be assessed by qualified medical staff.</p>
+        <button class="btn btn-primary" type="submit">Save donor profile</button>
+        <div id="donor-form-message" class="form-message" role="status"></div>
+      </form>
+    </section>
+
+    <section class="section requests-section" id="requests">
+      <div class="section-heading"><div><div class="eyebrow">URGENT NEEDS</div><h2>Blood requests</h2><p>Post a request or browse requests shared by the community.</p></div><button id="new-request-btn" class="btn btn-primary">＋ Create request</button></div>
+      <div id="request-form-wrap" class="form-card hidden">
+        <form id="request-form">
+          <div class="form-grid">
+            <label>Patient / contact name<input name="contactName" required maxlength="80"></label>
+            <label>Blood group<select name="bloodGroup" required><option value="">Choose group</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></label>
+            <label>City<input name="city" required maxlength="80"></label>
+            <label>Units needed<input name="units" required type="number" min="1" max="20" value="1"></label>
+            <label>Hospital<input name="hospital" required maxlength="120"></label>
+            <label>Needed by<input name="neededBy" type="date" required></label>
+            <label>Contact phone<input name="phone" required type="tel" pattern="[0-9+() -]{7,20}"></label>
+            <label>Urgency<select name="urgency"><option>Urgent</option><option>Within 24 hours</option><option>Planned</option></select></label>
+            <label class="full-width">Additional details<textarea name="details" rows="3" maxlength="500" placeholder="Ward, landmark, or other useful details"></textarea></label>
+          </div>
+          <div class="form-actions"><button class="btn btn-primary" type="submit">Publish request</button><button id="cancel-request" class="btn btn-light" type="button">Cancel</button></div>
+          <div id="request-form-message" class="form-message" role="status"></div>
+        </form>
+      </div>
+      <div class="request-toolbar"><select id="request-group"><option value="">All blood groups</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select><input id="request-city" placeholder="Filter by city"><button id="request-filter-btn" class="btn btn-light">Filter</button></div>
+      <div id="request-results" class="request-list"><div class="empty-state">Loading requests…</div></div>
+    </section>
+  </main>
+
+  <footer><a class="brand" href="#"><span class="brand-icon">♥</span> Blood<span>Support</span></a><p>Built for community support. In a medical emergency, contact local emergency services or a licensed blood bank.</p><small>© <span id="year"></span> BloodSupport • Protect privacy. Verify information.</small></footer>
+
+  <dialog id="auth-dialog">
+    <form method="dialog" class="dialog-close"><button aria-label="Close">×</button></form>
+    <div class="eyebrow">WELCOME TO BLOODSUPPORT</div><h2 id="auth-title">Sign in</h2><p class="dialog-subtitle">Sign in to manage your donor profile and create blood requests.</p>
+    <form id="auth-form">
+      <label>Email address<input name="email" type="email" required autocomplete="email" placeholder="you@example.com"></label>
+      <label>Password<input name="password" type="password" required minlength="6" autocomplete="current-password" placeholder="At least 6 characters"></label>
+      <button id="auth-submit" class="btn btn-primary full-width" type="submit">Sign in</button>
+      <div id="auth-message" class="form-message" role="status"></div>
+    </form>
+    <button id="auth-toggle" class="text-link auth-toggle">New here? Create an account</button>
+  </dialog>
+  <div id="toast" class="toast" role="status"></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
