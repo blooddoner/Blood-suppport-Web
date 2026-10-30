@@ -6,6 +6,7 @@ import {
   signInWithEmailAndPassword,
   signOut
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+
 import {
   getFirestore,
   collection,
@@ -19,15 +20,9 @@ import {
   deleteDoc
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 
-/*
-  1. Create a Firebase project.
-  2. Add a Web App in Project settings and paste its config below.
-  3. Enable Authentication > Sign-in method > Email/Password.
-  4. Create a Firestore database and publish firestore.rules.
-*/
-
+/* FIREBASE CONFIGURATION */
 const firebaseConfig = {
-  apiKey: "AIzaSyAn-2PdddXj-5T2-5swp7nFDbyOUkxeVMY",
+  apiKey: "AIzaSyAn-2PdddXj-5T5-2swp7nFDbyOUkxeVMY",
   authDomain: "bloodsupport-f19fe.firebaseapp.com",
   projectId: "bloodsupport-f19fe",
   storageBucket: "bloodsupport-f19fe.firebasestorage.app",
@@ -35,19 +30,9 @@ const firebaseConfig = {
   appId: "1:421685314363:web:7b928b64aa54b26296ed1e"
 };
 
-const configReady = !Object.values(firebaseConfig).some(
-  v => String(v).includes("PASTE_") || String(v).includes("YOUR_")
-);
-
-let auth, db;
-
-if (configReady) {
-  const app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  db = getFirestore(app);
-} else {
-  console.warn("Firebase config is not set. Open app.js and replace firebaseConfig placeholders.");
-}
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
 const $ = id => document.getElementById(id);
 
@@ -60,14 +45,20 @@ let isRegisterMode = false;
 
 $("year").textContent = new Date().getFullYear();
 
-function toast(messageText) {
-  $("toast").textContent = messageText;
+function toast(text) {
+  $("toast").textContent = text;
   $("toast").classList.add("show");
-  setTimeout(() => $("toast").classList.remove("show"), 3000);
+
+  setTimeout(() => {
+    $("toast").classList.remove("show");
+  }, 3000);
 }
 
 function message(id, text, success = false) {
   const el = $(id);
+
+  if (!el) return;
+
   el.textContent = text;
   el.classList.toggle("success", success);
 }
@@ -79,7 +70,7 @@ function escapeHtml(value = "") {
     ">": "&gt;",
     '"': "&quot;",
     "'": "&#39;"
-  }[ch]));
+  })[ch]);
 }
 
 function normalize(value = "") {
@@ -92,55 +83,80 @@ function requireAuth() {
     toast("Please sign in first.");
     return false;
   }
+
   return true;
 }
 
-function showSignedOutConfig() {
-  $("donor-results").innerHTML =
-    '<div class="empty-state">Firebase is not configured yet. Follow README.md, then refresh this page.</div>';
+function errorText(e) {
+  const map = {
+    "auth/invalid-credential": "Email or password is incorrect.",
+    "auth/email-already-in-use": "This email already has an account.",
+    "auth/weak-password": "Use a password with at least 6 characters.",
+    "auth/invalid-email": "Enter a valid email address.",
+    "permission-denied": "Database access denied. Check Firestore rules."
+  };
 
-  $("request-results").innerHTML =
-    '<div class="empty-state">Add your Firebase configuration to connect the database.</div>';
-
-  $("donor-count").textContent = "Firebase setup required";
+  return map[e?.code] || e?.message || "Something went wrong.";
 }
+
+/* DONOR CARD */
 
 function donorCard(d) {
   const available = d.available !== false;
 
   const contact = currentUser
-    ? `<a class="btn btn-light small-btn" href="tel:${escapeHtml(d.phone || "")}">Contact donor</a>`
-    : `<button class="btn btn-light small-btn" data-signin>Sign in to contact</button>`;
+    ? `<a class="btn btn-light small-btn"
+         href="tel:${escapeHtml(d.phone || "")}">
+         Contact donor
+       </a>`
+    : `<button class="btn btn-light small-btn" data-signin>
+         Sign in to contact
+       </button>`;
+
+  const ownerButton =
+    currentUser && d.ownerId === currentUser.uid
+      ? `<button
+           class="btn btn-outline small-btn owner-toggle"
+           data-id="${escapeHtml(d.id)}"
+           data-available="${available}">
+           ${available ? "Mark unavailable" : "Mark available"}
+         </button>`
+      : "";
 
   return `
     <article class="donor-card">
       <div class="donor-top">
-        <div class="avatar">${escapeHtml((d.name || "D").charAt(0).toUpperCase())}</div>
+        <div class="avatar">
+          ${escapeHtml((d.name || "D").charAt(0).toUpperCase())}
+        </div>
+
         <div>
           <h3>${escapeHtml(d.name || "Community donor")}</h3>
-          <div class="muted">⌖ ${escapeHtml(d.city || "City not listed")}</div>
+          <div class="muted">
+            ${escapeHtml(d.city || "City not listed")}
+          </div>
         </div>
-        <span class="blood-badge">${escapeHtml(d.bloodGroup || "—")}</span>
+
+        <span class="blood-badge">
+          ${escapeHtml(d.bloodGroup || "—")}
+        </span>
       </div>
+
       <div class="card-line"></div>
+
       <div class="card-bottom">
         <span class="availability ${available ? "" : "unavailable"}">
           ${available ? "● Available" : "● Unavailable"}
         </span>
         ${contact}
       </div>
-      ${
-        currentUser && d.ownerId === currentUser.uid
-          ? `<button class="btn btn-outline small-btn owner-toggle"
-               data-id="${escapeHtml(d.id)}"
-               data-available="${available}"
-               style="margin-top:12px">
-               ${available ? "Mark unavailable" : "Mark available"}
-             </button>`
-          : ""
-      }
-    </article>`;
+
+      ${ownerButton}
+    </article>
+  `;
 }
+
+/* DISPLAY AND FILTER DONORS */
 
 function renderDonors() {
   const group = $("search-group").value;
@@ -158,30 +174,41 @@ function renderDonors() {
 
   $("donor-results").innerHTML = filtered.length
     ? filtered.map(donorCard).join("")
-    : '<div class="empty-state">No donors match these filters. Try another city or blood group.</div>';
+    : `<div class="empty-state">
+         No donors match these filters.
+       </div>`;
 
-  $("donor-results").querySelectorAll("[data-signin]").forEach(b => {
-    b.addEventListener("click", () => $("auth-dialog").showModal());
-  });
-
-  $("donor-results").querySelectorAll(".owner-toggle").forEach(b => {
-    b.addEventListener("click", async () => {
-      if (!requireAuth()) return;
-
-      try {
-        await updateDoc(doc(db, "donors", b.dataset.id), {
-          available: b.dataset.available !== "true",
-          updatedAt: serverTimestamp()
-        });
-
-        await loadDonors();
-        toast("Availability updated.");
-      } catch (e) {
-        toast(errorText(e));
-      }
+  $("donor-results").querySelectorAll("[data-signin]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        $("auth-dialog").showModal();
+      });
     });
-  });
+
+  $("donor-results").querySelectorAll(".owner-toggle")
+    .forEach(button => {
+      button.addEventListener("click", async () => {
+        if (!requireAuth()) return;
+
+        try {
+          await updateDoc(
+            doc(db, "donors", button.dataset.id),
+            {
+              available: button.dataset.available !== "true",
+              updatedAt: serverTimestamp()
+            }
+          );
+
+          await loadDonors();
+          toast("Availability updated.");
+        } catch (err) {
+          toast(errorText(err));
+        }
+      });
+    });
 }
+
+/* BLOOD REQUEST CARD */
 
 function requestCard(r) {
   const owner = currentUser && r.ownerId === currentUser.uid;
@@ -190,39 +217,82 @@ function requestCard(r) {
     <article class="request-card">
       <div class="request-top">
         <div>
-          <h3>${escapeHtml(r.contactName || "Blood needed")} · ${escapeHtml(r.city || "")}</h3>
-          <div class="muted">${escapeHtml(r.hospital || "Hospital not listed")}</div>
+          <h3>
+            ${escapeHtml(r.contactName || "Blood needed")}
+            · ${escapeHtml(r.city || "")}
+          </h3>
+
+          <div class="muted">
+            ${escapeHtml(r.hospital || "Hospital not listed")}
+          </div>
         </div>
-        <span class="urgency">${escapeHtml(r.urgency || "Urgent")}</span>
+
+        <span class="urgency">
+          ${escapeHtml(r.urgency || "Urgent")}
+        </span>
       </div>
 
       <div class="request-details">
-        <span><strong>Blood group</strong><b>${escapeHtml(r.bloodGroup || "—")}</b></span>
-        <span><strong>Units needed</strong><b>${escapeHtml(r.units || 1)}</b></span>
-        <span><strong>Needed by</strong><b>${escapeHtml(r.neededBy || "As soon as possible")}</b></span>
-        <span><strong>Contact</strong><b>${currentUser ? escapeHtml(r.phone || "Not listed") : "Sign in to view"}</b></span>
+        <span>
+          <strong>Blood group</strong>
+          <b>${escapeHtml(r.bloodGroup || "—")}</b>
+        </span>
+
+        <span>
+          <strong>Units needed</strong>
+          <b>${escapeHtml(r.units || 1)}</b>
+        </span>
+
+        <span>
+          <strong>Needed by</strong>
+          <b>${escapeHtml(r.neededBy || "As soon as possible")}</b>
+        </span>
+
+        <span>
+          <strong>Contact</strong>
+          <b>${currentUser
+            ? escapeHtml(r.phone || "Not listed")
+            : "Sign in to view"}</b>
+        </span>
       </div>
 
-      ${r.details ? `<p class="muted">${escapeHtml(r.details)}</p>` : ""}
+      ${r.details
+        ? `<p class="muted">${escapeHtml(r.details)}</p>`
+        : ""}
 
       <div class="request-footer">
-        <span>${r.status === "fulfilled" ? "✓ Fulfilled" : "● Open request"}</span>
+        <span>
+          ${r.status === "fulfilled"
+            ? "✓ Fulfilled"
+            : "● Open request"}
+        </span>
 
-        ${
-          owner
-            ? `<div>
-                <button class="btn btn-light small-btn" data-fulfill="${escapeHtml(r.id)}">
-                  ${r.status === "fulfilled" ? "Reopen" : "Mark fulfilled"}
-                </button>
-                <button class="btn btn-outline small-btn" data-delete="${escapeHtml(r.id)}">Delete</button>
-              </div>`
-            : currentUser
-              ? `<a class="btn btn-light small-btn" href="tel:${escapeHtml(r.phone || "")}">Call contact</a>`
-              : `<button class="btn btn-light small-btn" data-signin>Sign in</button>`
-        }
+        ${owner
+          ? `<div>
+               <button class="btn btn-light small-btn"
+                 data-fulfill="${escapeHtml(r.id)}">
+                 ${r.status === "fulfilled" ? "Reopen" : "Mark fulfilled"}
+               </button>
+
+               <button class="btn btn-outline small-btn"
+                 data-delete="${escapeHtml(r.id)}">
+                 Delete
+               </button>
+             </div>`
+          : currentUser
+            ? `<a class="btn btn-light small-btn"
+                 href="tel:${escapeHtml(r.phone || "")}">
+                 Call contact
+               </a>`
+            : `<button class="btn btn-light small-btn" data-signin>
+                 Sign in
+               </button>`}
       </div>
-    </article>`;
+    </article>
+  `;
 }
+
+/* DISPLAY REQUESTS */
 
 function renderRequests() {
   const group = $("request-group").value;
@@ -235,90 +305,98 @@ function renderRequests() {
 
   $("request-results").innerHTML = filtered.length
     ? filtered.map(requestCard).join("")
-    : '<div class="empty-state">No requests found. Try another filter or create a request.</div>';
+    : `<div class="empty-state">No requests found.</div>`;
 
-  $("request-results").querySelectorAll("[data-signin]").forEach(b => {
-    b.addEventListener("click", () => $("auth-dialog").showModal());
-  });
-
-  $("request-results").querySelectorAll("[data-fulfill]").forEach(b => {
-    b.addEventListener("click", async () => {
-      try {
-        await updateDoc(doc(db, "requests", b.dataset.fulfill), {
-          status: b.textContent.trim() === "Reopen" ? "open" : "fulfilled",
-          updatedAt: serverTimestamp()
-        });
-
-        await loadRequests();
-        toast("Request status updated.");
-      } catch (e) {
-        toast(errorText(e));
-      }
+  $("request-results").querySelectorAll("[data-signin]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        $("auth-dialog").showModal();
+      });
     });
-  });
 
-  $("request-results").querySelectorAll("[data-delete]").forEach(b => {
-    b.addEventListener("click", async () => {
-      if (!confirm("Delete this request?")) return;
+  $("request-results").querySelectorAll("[data-fulfill]")
+    .forEach(button => {
+      button.addEventListener("click", async () => {
+        try {
+          await updateDoc(
+            doc(db, "requests", button.dataset.fulfill),
+            {
+              status: button.textContent.trim() === "Reopen"
+                ? "open"
+                : "fulfilled",
+              updatedAt: serverTimestamp()
+            }
+          );
 
-      try {
-        await deleteDoc(doc(db, "requests", b.dataset.delete));
-        await loadRequests();
-        toast("Request deleted.");
-      } catch (e) {
-        toast(errorText(e));
-      }
+          await loadRequests();
+          toast("Request status updated.");
+        } catch (err) {
+          toast(errorText(err));
+        }
+      });
     });
-  });
+
+  $("request-results").querySelectorAll("[data-delete]")
+    .forEach(button => {
+      button.addEventListener("click", async () => {
+        if (!confirm("Delete this request?")) return;
+
+        try {
+          await deleteDoc(
+            doc(db, "requests", button.dataset.delete)
+          );
+
+          await loadRequests();
+          toast("Request deleted.");
+        } catch (err) {
+          toast(errorText(err));
+        }
+      });
+    });
 }
 
-function errorText(e) {
-  const map = {
-    "auth/invalid-credential": "Email or password is incorrect.",
-    "auth/email-already-in-use": "This email already has an account.",
-    "auth/weak-password": "Use a password with at least 6 characters.",
-    "auth/invalid-email": "Enter a valid email address.",
-    "permission-denied": "Database access denied. Check Firestore rules and sign-in status."
-  };
-
-  return map[e?.code] || e?.message || "Something went wrong. Please try again.";
-}
+/* LOAD DATA FROM FIRESTORE */
 
 async function loadDonors() {
-  if (!db) {
-    showSignedOutConfig();
-    return;
-  }
-
   try {
-    const snap = await getDocs(collection(db, "donors"));
-    donors = snap.docs.map(x => ({ id: x.id, ...x.data() }));
+    const snapshot = await getDocs(collection(db, "donors"));
+
+    donors = snapshot.docs.map(item => ({
+      id: item.id,
+      ...item.data()
+    }));
+
     renderDonors();
-  } catch (e) {
+  } catch (err) {
     $("donor-results").innerHTML =
-      `<div class="empty-state">${escapeHtml(errorText(e))}</div>`;
+      `<div class="empty-state">${escapeHtml(errorText(err))}</div>`;
+
     $("donor-count").textContent = "Could not load donors";
   }
 }
 
 async function loadRequests() {
-  if (!db) {
-    showSignedOutConfig();
-    return;
-  }
-
   try {
-    const snap = await getDocs(
-      query(collection(db, "requests"), orderBy("createdAt", "desc"))
+    const snapshot = await getDocs(
+      query(
+        collection(db, "requests"),
+        orderBy("createdAt", "desc")
+      )
     );
 
-    requests = snap.docs.map(x => ({ id: x.id, ...x.data() }));
+    requests = snapshot.docs.map(item => ({
+      id: item.id,
+      ...item.data()
+    }));
+
     renderRequests();
-  } catch (e) {
+  } catch (err) {
     $("request-results").innerHTML =
-      `<div class="empty-state">${escapeHtml(errorText(e))}. If this is a new project, publish firestore.rules and create the database.</div>`;
+      `<div class="empty-state">${escapeHtml(errorText(err))}</div>`;
   }
 }
+
+/* LOGIN AND REGISTER */
 
 $("login-btn").addEventListener("click", () => {
   isRegisterMode = false;
@@ -327,16 +405,25 @@ $("login-btn").addEventListener("click", () => {
 });
 
 $("logout-btn").addEventListener("click", async () => {
-  if (auth) await signOut(auth);
+  try {
+    await signOut(auth);
+    toast("Signed out successfully.");
+  } catch (err) {
+    toast(errorText(err));
+  }
 });
 
 function updateAuthDialog() {
-  $("auth-title").textContent = isRegisterMode ? "Create account" : "Sign in";
-  $("auth-submit").textContent = isRegisterMode ? "Create account" : "Sign in";
+  $("auth-title").textContent =
+    isRegisterMode ? "Create account" : "Sign in";
 
-  $("auth-toggle").textContent = isRegisterMode
-    ? "Already registered? Sign in"
-    : "New here? Create an account";
+  $("auth-submit").textContent =
+    isRegisterMode ? "Create account" : "Sign in";
+
+  $("auth-toggle").textContent =
+    isRegisterMode
+      ? "Already registered? Sign in"
+      : "New here? Create an account";
 
   $("auth-form").elements.password.autocomplete =
     isRegisterMode ? "new-password" : "current-password";
@@ -348,20 +435,14 @@ $("auth-toggle").addEventListener("click", () => {
   updateAuthDialog();
 });
 
-/* FIX 1: Capture the form before awaiting Firebase. */
 $("auth-form").addEventListener("submit", async e => {
   e.preventDefault();
 
-  const form = e.currentTarget;
-
-  if (!auth) {
-    message("auth-message", "Set up Firebase in app.js first.");
-    return;
-  }
+  const form = e.currentTarget; // FIX: capture before await
 
   const data = new FormData(form);
-  const email = data.get("email").trim();
-  const password = data.get("password");
+  const email = String(data.get("email") || "").trim();
+  const password = String(data.get("password") || "");
 
   try {
     if (isRegisterMode) {
@@ -371,7 +452,7 @@ $("auth-form").addEventListener("submit", async e => {
     }
 
     $("auth-dialog").close();
-    form.reset();
+    form.reset(); // FIXED
     message("auth-message", "", true);
     toast("You're signed in.");
   } catch (err) {
@@ -379,18 +460,20 @@ $("auth-form").addEventListener("submit", async e => {
   }
 });
 
-if (auth) {
-  onAuthStateChanged(auth, user => {
-    currentUser = user;
+/* AUTH STATE */
 
-    $("login-btn").classList.toggle("hidden", !!user);
-    $("logout-btn").classList.toggle("hidden", !user);
-    $("user-label").textContent = user ? user.email : "";
+onAuthStateChanged(auth, user => {
+  currentUser = user;
 
-    renderDonors();
-    renderRequests();
-  });
-}
+  $("login-btn").classList.toggle("hidden", !!user);
+  $("logout-btn").classList.toggle("hidden", !user);
+  $("user-label").textContent = user ? user.email : "";
+
+  renderDonors();
+  renderRequests();
+});
+
+/* SEARCH CONTROLS */
 
 $("search-btn").addEventListener("click", renderDonors);
 
@@ -422,11 +505,12 @@ $("cancel-request").addEventListener("click", () => {
   $("request-form-wrap").classList.add("hidden");
 });
 
-/* FIX 2: Capture donor form before awaiting Firebase. */
+/* SAVE DONOR PROFILE - FIXED */
+
 $("donor-form").addEventListener("submit", async e => {
   e.preventDefault();
 
-  const form = e.currentTarget;
+  const form = e.currentTarget; // FIX: save form reference before await
 
   if (!requireAuth()) return;
 
@@ -438,76 +522,102 @@ $("donor-form").addEventListener("submit", async e => {
   }
 
   try {
-    const existing = donors.find(d => d.ownerId === currentUser.uid);
+    const existing = donors.find(
+      d => d.ownerId === currentUser.uid
+    );
 
     const payload = {
-      name: data.name.trim(),
+      name: String(data.name || "").trim(),
       bloodGroup: data.bloodGroup,
-      city: data.city.trim(),
-      phone: data.phone.trim(),
+      city: String(data.city || "").trim(),
+      phone: String(data.phone || "").trim(),
       available: data.available === "true",
       ownerId: currentUser.uid,
       updatedAt: serverTimestamp()
     };
 
     if (existing) {
-      await updateDoc(doc(db, "donors", existing.id), payload);
+      await updateDoc(
+        doc(db, "donors", existing.id),
+        payload
+      );
     } else {
-      await addDoc(collection(db, "donors"), {
-        ...payload,
-        createdAt: serverTimestamp()
-      });
+      await addDoc(
+        collection(db, "donors"),
+        {
+          ...payload,
+          createdAt: serverTimestamp()
+        }
+      );
     }
 
-    message("donor-form-message", "Your donor profile has been saved.", true);
-    form.reset();
+    form.reset(); // FIXED: no e.currentTarget after await
+
+    message(
+      "donor-form-message",
+      "Your donor profile has been saved.",
+      true
+    );
+
     await loadDonors();
+    toast("Donor profile saved successfully!");
+
   } catch (err) {
     message("donor-form-message", errorText(err));
   }
 });
 
-/* FIX 3: Capture request form before awaiting Firebase. */
+/* SAVE BLOOD REQUEST - FIXED */
+
 $("request-form").addEventListener("submit", async e => {
   e.preventDefault();
 
-  const form = e.currentTarget;
+  const form = e.currentTarget; // FIX: save form reference before await
 
   if (!requireAuth()) return;
 
   const data = Object.fromEntries(new FormData(form).entries());
 
+  if (!groups.includes(data.bloodGroup)) {
+    message("request-form-message", "Choose a valid blood group.");
+    return;
+  }
+
   try {
     await addDoc(collection(db, "requests"), {
-      contactName: data.contactName.trim(),
+      contactName: String(data.contactName || "").trim(),
       bloodGroup: data.bloodGroup,
-      city: data.city.trim(),
+      city: String(data.city || "").trim(),
       units: Number(data.units),
-      hospital: data.hospital.trim(),
+      hospital: String(data.hospital || "").trim(),
       neededBy: data.neededBy,
-      phone: data.phone.trim(),
+      phone: String(data.phone || "").trim(),
       urgency: data.urgency,
-      details: data.details.trim(),
+      details: String(data.details || "").trim(),
       status: "open",
       ownerId: currentUser.uid,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
 
-    message("request-form-message", "Your blood request has been published.", true);
-    form.reset();
+    form.reset(); // FIXED
+    message(
+      "request-form-message",
+      "Your blood request has been published.",
+      true
+    );
+
     $("request-form-wrap").classList.add("hidden");
 
     await loadRequests();
     toast("Blood request published.");
+
   } catch (err) {
     message("request-form-message", errorText(err));
   }
 });
 
-if (configReady) {
-  loadDonors();
-  loadRequests();
-} else {
-  showSignedOutConfig();
-}
+/* INITIAL LOAD */
+
+loadDonors();
+loadRequests();
